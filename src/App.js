@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 import {v4 as uuidv4} from 'uuid';
 import Editor from './components/Editor/Editor';
@@ -7,12 +7,18 @@ import List from './components/List/List';
 import Menu from './components/Menu/Menu';
 import Panel from './components/Panel/Panel';
 import Preview from './components/Preview/Preview';
+import useDocumentTitle from './components/DocumentTitle/useDocumentTitle';
+import ItemsContext from './components/ItemsContext/ItemsContext';
+
 
 function App() {
 
   const [items, setItems] = useState([]);
   const [copyitems, setCopyItems] = useState([]);
-  const [actualIndex, setActualIndex] = useState(-1)
+  const [actualIndex, setActualIndex] = useState(-1);
+
+  let textTitle = copyitems[actualIndex]?.title;
+  useDocumentTitle(textTitle, 'Notes')
 
   const handleClick = () => {
     const note = {
@@ -27,8 +33,8 @@ function App() {
     notes.unshift(note);
     let res = getOrderedNotes(notes);
     setItems(res);
-
-    setItems([note, ...items]);
+    setCopyItems(res);
+    
   }
 
   const sortByDate = (arr, asc = false) => {
@@ -61,6 +67,7 @@ function App() {
 
     let res = getOrderedNotes(notes);
     setItems(res);
+    setCopyItems(res);
     let newIndex = res.findIndex(i => i.id === id);
     setActualIndex(newIndex);
 
@@ -79,6 +86,7 @@ function App() {
   let notes = [...items];
   notes[actualIndex].title = title;
   setItems(notes);
+  setCopyItems(notes);
 
  }
 
@@ -87,16 +95,40 @@ function App() {
   let notes = [...items];
   notes[actualIndex].text = text;
   setItems(notes);
+  setCopyItems(notes);
+ }
+
+ const handleSearch = (e) => {
+
+  const query = e.target.value;
+  if(query === ''){
+    setCopyItems([...items]);
+  }else{
+    
+    let res = items.filter(item => item.title.indexOf(query) >= 0 ||  item.text.indexOf(query) >= 0);
+    
+    if(res.length === 0){
+      setActualIndex(-1)
+    }else{
+      setCopyItems([...res]);
+      setActualIndex(0);
+    }
+    
+    
+  }
+
  }
 
 
   return (
     <div className='App container'>
       <Panel>
-        <Menu handleClick={handleClick}></Menu>
+        <ItemsContext.Provider value={{handleClick, handleSearch}}>
+          <Menu/>
+        </ItemsContext.Provider>
         <List>
             {
-              items.map((item, i) => 
+              copyitems.map((item, i) => 
                 <Item item={item} key={item.id} index={i} handlePinned={handlePinned} handleSelectNote={handleSelectNote} actualIndex={actualIndex}/>
               )
             }
@@ -106,8 +138,8 @@ function App() {
       {
         actualIndex >= 0 ?
         <>
-          <Editor item={items[actualIndex]} changeText={changeText} changeTitle={changeTitle}/>
-          <Preview text={items[actualIndex].text}/>
+          <Editor item={copyitems[actualIndex]} changeText={changeText} changeTitle={changeTitle}/>
+          <Preview text={copyitems[actualIndex].text}/>
         </>
         :
         ''
